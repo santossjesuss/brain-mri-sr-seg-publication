@@ -5,7 +5,6 @@ from torch.nn.utils import clip_grad_norm_
 import torch.optim as optim
 from configs.mslesseg_config import MSLesSegConfig
 from torch.utils.data import DataLoader
-from samplers.lesion_guaranteed_sampler import LesionGuaranteedBatchSampler
 import segmentation_models_pytorch as smp
 from models.rcan.rcan import RCAN
 from losses.dice_ce_combined_loss import DiceCECombinedLoss
@@ -42,20 +41,7 @@ class BasePipeline(ABC):
     def predict_random(self, dataset):
         pass
 
-    def _get_dataloader(self, dataset, use_lesion_sampler=False):
-        if use_lesion_sampler:
-            sampler = LesionGuaranteedBatchSampler(
-                dataset=dataset,
-                batch_size=self.config.batch_size,
-                positives_per_batch=self.config.positives_per_batch,
-                drop_last=self.config.drop_last
-            )
-            return DataLoader(
-                dataset,
-                batch_sampler=sampler,
-                num_workers=self.config.num_workers
-            )
-        
+    def _get_dataloader(self, dataset):
         return DataLoader(
             dataset,
             batch_size=self.config.batch_size,
