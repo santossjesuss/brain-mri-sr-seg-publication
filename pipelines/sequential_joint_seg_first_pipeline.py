@@ -1,6 +1,7 @@
 import os
 import random
 import torch
+from torch.utils.data import Subset
 from models.multi_stage_model import MultiStageModel
 from trainers.multi_stage_trainer import MultiStageTrainer
 from pipelines.base_pipeline import BasePipeline
@@ -21,80 +22,106 @@ class SequentialJointSegFirstPipeline(BasePipeline):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-    def run(self, train_dataset, validation_dataset):
-        train_loader = self._get_dataloader(train_dataset, use_lesion_sampler=self.config.use_lesion_sampler)
-        validation_loader = self._get_dataloader(validation_dataset)
-
+    def run(self, full_train_dataset, folds):
         version = HyperparameterVersion.V1
+        fold_validation_results = []
 
-        sr_model = self._init_rcan()
-        seg_model = self._init_unet()
-        criterion = self._get_seg_loss(version=version)
-        validation_metrics = self._get_seg_validation_metrics()
-        logger = self._get_logger()
+        for fold_idx, (train_indices, validation_indices) in enumerate(folds):
+            print(f"\nFold {fold_idx + 1}/{len(self.folds)}")
 
-        # Frozen SR -> Trainable Seg
-        first_phase_sr_seg = MultiStageModel(
-            sr_model,
-            seg_model,
-            freeze_stage_1=True,
-            freeze_stage_2=True
-        )
-        first_phase_path = os.path.join(self.config.folder_name, f'{self.config.frozen_sr_trainable_seg}.pth')
-        load_model_for_inference(model=first_phase_sr_seg, saving_name=first_phase_path)
-        fine_tuned_seg_model = first_phase_sr_seg.model_stage_2
+            train_dataset = Subset(full_train_dataset, train_indices)
+            validation_dataset = Subset(full_train_dataset, validation_indices)
 
-        # Trainable SR -> Frozen Seg
-        sr_model = self._init_rcan()
-        second_phase_sr_seg = MultiStageModel(
-            sr_model,
-            fine_tuned_seg_model,
-            freeze_stage_1=False,
-            freeze_stage_2=True
-        )
-        optimizer = self._get_optimizer(second_phase_sr_seg.parameters(), version)
-        scheduler = self._get_scheduler(optimizer)
+            train_loader = self._get_dataloader(train_dataset)
+            validation_loader = self._get_dataloader(validation_dataset)
 
-        trainer = MultiStageTrainer(
-            config=self.config,
-            model=second_phase_sr_seg,
-            device=self.device,
-            train_loader=train_loader,
-            validation_loader=validation_loader,
-            criterion=criterion,
-            validation_metrics=validation_metrics,
-            optimizer=optimizer,
-            scheduler=scheduler,
-            logger=logger,
-            saving_name=self.saving_path
-        )
+            sr_model = self._init_rcan()
+            seg_model = self._init_unet()
+            criterion = self._get_seg_loss(version=version)
+            validation_metrics = self._get_seg_validation_metrics()
+            logger = self._get_logger()
 
-        return trainer.train(epochs=self.config.epochs)
+            # Frozen SR -> Trainable Seg
+            first_phase_sr_seg = MultiStageModel(
+                sr_model,
+                seg_model,
+                freeze_stage_1=True,
+                freeze_stage_2=True
+            )
+            first_phase_path = os.path.join(self.config.folder_name, f'{self.config.frozen_sr_trainable_seg}_fold{fold_idx}.pth')
+            load_model_for_inference(model=first_phase_sr_seg, saving_name=first_phase_path)
+            fine_tuned_seg_model = first_phase_sr_seg.model_stage_2
+
+            # Trainable SR -> Frozen Seg
+            sr_model = self._init_rcan()
+            second_phase_sr_seg = MultiStageModel(
+                sr_model,
+                fine_tuned_seg_model,
+                freeze_stage_1=False,
+                freeze_stage_2=True
+            )
+            optimizer = self._get_optimizer(second_phase_sr_seg.parameters(), version)
+            scheduler = self._get_scheduler(optimizer)
+
+            fold_adapted_path = self._adapt_saving_path(fold_idx)
+
+            trainer = MultiStageTrainer(
+                config=self.config,
+                model=second_phase_sr_seg,
+                device=self.device,
+                train_loader=train_loader,
+                validation_loader=validation_loader,
+                criterion=criterion,
+                validation_metrics=validation_metrics,
+                optimizer=optimizer,
+                scheduler=scheduler,
+                logger=logger,
+                saving_name=fold_adapted_path
+            )
+
+            _, validation_results = trainer.train(epochs=self.config.epochs)
+            fold_validation_results.append({
+                "fold": fold_idx + 1,
+                "fold_metrics": validation_results
+            })
+
+        return fold_validation_results
 
     def test(self, test_dataset):
-        test_loader = self._get_dataloader(test_dataset)
+        fold_test_results = []
 
-        sr_model = self._init_rcan()
-        seg_model = self._init_unet()
-        validation_metrics = self._get_seg_validation_metrics()
+        for fold_idx in self.config.num_folds:
+            test_loader = self._get_dataloader(test_dataset)
 
-        sequential_joint_seg_first_model = MultiStageModel(
-            sr_model, 
-            seg_model, 
-            freeze_stage_1=True, 
-            freeze_stage_2=True
-        )
-        load_model_for_inference(model=sequential_joint_seg_first_model, saving_name=self.saving_path)
+            sr_model = self._init_rcan()
+            seg_model = self._init_unet()
+            validation_metrics = self._get_seg_validation_metrics()
 
-        trainer = MultiStageTrainer(
-            config=self.config,
-            model=sequential_joint_seg_first_model,
-            device=self.device,
-            validation_metrics=validation_metrics
-        )
+            sequential_joint_seg_first_model = MultiStageModel(
+                sr_model, 
+                seg_model, 
+                freeze_stage_1=True, 
+                freeze_stage_2=True
+            )
+            fold_adapted_path = self._adapt_saving_path(fold_idx)
+            load_model_for_inference(model=sequential_joint_seg_first_model, saving_name=fold_adapted_path)
 
-        return trainer.test(test_loader)
+            trainer = MultiStageTrainer(
+                config=self.config,
+                model=sequential_joint_seg_first_model,
+                device=self.device,
+                validation_metrics=validation_metrics
+            )
 
+            test_metrics = trainer.test(test_loader)
+            fold_test_results.append({
+                "fold": fold_idx + 1,
+                "fold_metrics": test_metrics
+            })
+
+        return fold_test_results
+
+    # PENDING TO DELETE 
     def predict(self, input_tensor):
         sr_model = self._init_rcan()
         seg_model = self._init_unet()

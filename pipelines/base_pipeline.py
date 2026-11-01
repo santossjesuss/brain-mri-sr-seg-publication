@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 import os
+from pathlib import Path
 import torch.nn as nn
 from torch.nn.utils import clip_grad_norm_
 import torch.optim as optim
@@ -26,7 +27,7 @@ class BasePipeline(ABC):
         self.saving_path = os.path.join(self.config.folder_name, f'{experiment_name}.pth')
 
     @abstractmethod
-    def run(self, train_dataset, validation_dataset):
+    def run(self, full_train_dataset, folds):
         pass
 
     @abstractmethod
@@ -152,3 +153,11 @@ class BasePipeline(ABC):
         )
 
         return metrics.compute()['dice']
+
+    def _adapt_saving_path(self, fold_idx):
+        path_without_extension = Path(self.saving_path).stem
+        fold_suffix = f"_fold{fold_idx}"
+        file_extension = ".pth"
+
+        adapted_path = os.path.join(path_without_extension, fold_suffix, file_extension)
+        return adapted_path

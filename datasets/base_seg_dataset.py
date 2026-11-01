@@ -12,11 +12,11 @@ class BaseSegmentationDataset(Dataset, ABC):
         self.is_control_dataset = is_control_dataset
 
         self.dataset_path = self._resolve_dataset_path(dataset_path=dataset_path)
-        self.image_paths = self._get_data_path(is_image=True)
-        self.mask_paths = self._get_data_path(is_image=False)
+        self.image_base_path = self._get_data_path(is_image=True)
+        self.mask_base_path = self._get_data_path(is_image=False)
         
-        self.image_names = self._get_names(data_path=self.image_paths)
-        self.mask_names = self._get_names(data_path=self.mask_paths)
+        self.image_names = self._get_names(data_path=self.image_base_path)
+        self.mask_names = self._get_names(data_path=self.mask_base_path)
         
         self.transforms = BaseTransforms(scale_factor=scale_factor, target_width=target_width, target_height=target_height)
         
@@ -24,8 +24,8 @@ class BaseSegmentationDataset(Dataset, ABC):
         return len(self.image_names)
 
     def __getitem__(self, idx):
-        image_path = os.path.join(self.image_paths, self.image_names[idx])
-        mask_path = os.path.join(self.mask_paths, self.mask_names[idx])
+        image_path = os.path.join(self.image_base_path, self.image_names[idx])
+        mask_path = os.path.join(self.mask_base_path, self.mask_names[idx])
         
         hr_image = read_image(image_path, mode=ImageReadMode.GRAY)
         lr_image = self.transforms.downsample_image_torch(hr_image)

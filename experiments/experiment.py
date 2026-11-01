@@ -1,10 +1,10 @@
 class Experiment:
-    def __init__(self, name, pipeline, config, training_dataset, validation_dataset, test_dataset, dataset_name, data_resolution=None):
+    def __init__(self, name, pipeline, config, folds, full_train_dataset, test_dataset, dataset_name, data_resolution=None):
         self.name = name
         self.pipeline = pipeline
         self.config = config
-        self.training_dataset = training_dataset
-        self.validation_dataset = validation_dataset
+        self.folds = folds
+        self.full_train_dataset = full_train_dataset
         self.test_dataset = test_dataset
         self.dataset_name = dataset_name
         self.data_resolution = data_resolution
@@ -13,7 +13,7 @@ class Experiment:
         print(f"Starting experiment: {self.name}")
 
         pipeline = self.pipeline(config=self.config, experiment_name=self.name, dataset_name=self.dataset_name, data_resolution=self.data_resolution)
-        model, best_metrics = pipeline.run(self.training_dataset, self.validation_dataset)
+        model, best_metrics = pipeline.run(self.full_train_dataset, self.folds)
         return model, best_metrics
 
     def test(self):
@@ -22,11 +22,11 @@ class Experiment:
         pipeline = self.pipeline(config=self.config, experiment_name=self.name, data_resolution=self.data_resolution)
         return pipeline.test(self.test_dataset)
     
-    def test_validation_dataset(self):
-        print(f"Testing experiment {self.name} on 'validation dataset'")
+    # def test_validation_dataset(self):
+    #     print(f"Testing experiment {self.name} on 'validation dataset'")
 
-        pipeline = self.pipeline(config=self.config, experiment_name=self.name, data_resolution=self.data_resolution)
-        return pipeline.test_validation_dataset(self.validation_dataset)
+    #     pipeline = self.pipeline(config=self.config, experiment_name=self.name, data_resolution=self.data_resolution)
+    #     return pipeline.test_validation_dataset(self.validation_dataset)
 
     def predict(self, idx):
         print(f"Predicting on input image using experiment '{self.name}'")

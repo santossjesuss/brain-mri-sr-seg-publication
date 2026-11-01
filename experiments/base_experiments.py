@@ -1,5 +1,6 @@
 from abc import ABC
-from torch.utils.data import ConcatDataset, Subset
+from pathlib import Path
+from sklearn.model_selection import GroupKFold
 from experiments.experiment import Experiment
 from enums.resolution_enum import Resolution
 from pipelines.super_resolution_pipeline import SuperResolutionPipeline
@@ -25,26 +26,14 @@ class BaseExperiments(ABC):
             target_width=self.config.target_width,
             target_height=self.config.target_height
         )
-        control_training_dataset = dataset(
-            is_training=True,
-            is_control_dataset=True,
-            view=self.config.view,
-            scale_factor=self.config.scale_factor,
-            target_width=self.config.target_width,
-            target_height=self.config.target_height
-        )
-        lesion_train_indices, lesion_validation_indices = self._get_patients_split(lesion_training_dataset.image_names, self.config.train_perc_size, is_control=False)
-        control_train_indices, control_validation_indices = self._get_patients_split(control_training_dataset.image_names, self.config.train_perc_size, is_control=True)
-        self.train_dataset = ConcatDataset([
-            Subset(lesion_training_dataset, lesion_train_indices),
-            Subset(control_training_dataset, control_train_indices)
-        ])
-        self.validation_dataset = ConcatDataset([
-            Subset(lesion_training_dataset, lesion_validation_indices),
-            Subset(control_training_dataset, control_validation_indices)
-        ])
+        self.full_train_dataset = lesion_training_dataset
 
-        lesion_testing_dataset = dataset(
+        self.folds = self._generate_patient_folds(
+            names=self.full_train_dataset.image_names,
+            num_folds=self.config.num_folds
+        )
+
+        self.test_dataset = dataset(
             is_training=False,
             is_control_dataset=False,
             view=self.config.view, 
@@ -52,46 +41,47 @@ class BaseExperiments(ABC):
             target_width=self.config.target_width,
             target_height=self.config.target_height
         )
-        control_testing_dataset = dataset(
-            is_training=False,
-            is_control_dataset=True,
-            view=self.config.view, 
-            scale_factor=self.config.scale_factor,
-            target_width=self.config.target_width,
-            target_height=self.config.target_height
-        )
-        self.test_dataset = ConcatDataset([
-            lesion_testing_dataset,
-            control_testing_dataset
-        ])
-    
-    def _get_train_validation_sizes(self, train_dataset_size, train_perc):
-        train_size = int(train_perc * train_dataset_size)
-        validation_size = train_dataset_size - train_size
 
-        return train_size, validation_size
-    
-    def _get_patients_split(self, names, train_perc, is_control):
-        patient_ids = sorted(set(name.split('_')[1] for name in names))
-        train_size, _ = self._get_train_validation_sizes(len(patient_ids), train_perc)
-        train_patients = set(patient_ids[:train_size])
-        validation_patients = set(patient_ids[train_size:])
+    def _generate_patient_folds(self, names, num_folds):
+        # indices = list(range(len(names)))
+        patient_id_groups = [
+            self._get_patient_id(name)
+            for name in names
+        ]
 
-        train_indices = [i for i, name in enumerate(names) if name.split('_')[1] in train_patients]
-        validation_indices = [i for i, name in enumerate(names) if name.split('_')[1] in validation_patients]
+        splitter = GroupKFold(n_splits=num_folds)
+        folds = list(splitter.split(
+            # X=indices,
+            X=names,
+            groups=patient_id_groups
+        ))
 
-        subset_type = 'Control' if is_control else 'Lesion'
-        print(f"{subset_type} subset - Train patients: {len(train_patients)} ({len(train_indices)} slices), Val patients: {len(validation_patients)} ({len(validation_indices)} slices)")
+        return folds
 
-        return train_indices, validation_indices
-    
+    def _get_patient_id(self, filename):
+        filename_parts = self._parse_mri_filename(filename)
+        patient_id = filename_parts[0]
+
+        return patient_id
+
+    def _parse_mri_filename(filename):
+        parts = Path(filename).stem.split("_")
+
+        if len(parts != 3):
+            raise ValueError(f"Unexpected filename {filename}")
+
+        patient_id = parts[1]
+        slice_id = parts[2]
+
+        return patient_id, slice_id
+
     def _create_experiment(self, name, pipeline, data_resolution=None):
         return Experiment(
             config=self.config,
             name=name,
             pipeline=pipeline,
-            training_dataset=self.train_dataset,
-            validation_dataset=self.validation_dataset,
+            folds=self.folds,
+            full_train_dataset=self.full_train_dataset,
             test_dataset=self.test_dataset,
             dataset_name=self.config.dataset_name,
             data_resolution=data_resolution

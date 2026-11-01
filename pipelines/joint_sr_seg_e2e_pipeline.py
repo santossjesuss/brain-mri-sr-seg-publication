@@ -1,5 +1,6 @@
 import random
 import torch
+from torch.utils.data import Subset
 from pipelines.base_pipeline import BasePipeline
 from models.multi_stage_model import MultiStageModel
 from trainers.multi_stage_trainer import MultiStageTrainer
@@ -14,71 +15,99 @@ class JointSRSegE2EPipeline(BasePipeline):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-    def run(self, train_dataset, validation_dataset):
-        train_loader = self._get_dataloader(train_dataset, use_lesion_sampler=self.config.use_lesion_sampler)
-        validation_loader = self._get_dataloader(validation_dataset)
-
+    def run(self, full_train_dataset, folds):
         version = HyperparameterVersion.V1
-    
-        sr_model = self._init_rcan()
-        seg_model = self._init_unet()
-        criterion = self._get_seg_loss(version)
-        validation_metrics = self._get_seg_validation_metrics()
-        logger = self._get_logger()
+        fold_validation_results = []
 
-        joint_sr_seg_e2e_model = MultiStageModel(
-            model_stage_1=sr_model,
-            model_stage_2=seg_model,
-            freeze_stage_1=False,
-            freeze_stage_2=False
-        )
+        for fold_idx, (train_indices, validation_indices) in enumerate(folds):
+            print(f"\nFold {fold_idx + 1}/{len(self.folds)}")
 
-        optimizer = self._get_optimizer(joint_sr_seg_e2e_model.parameters(), version)
-        scheduler = self._get_scheduler(optimizer)
-        # gradient_clipper = self._get_gradient_clipper(joint_sr_seg_e2e_model)
+            train_dataset = Subset(full_train_dataset, train_indices)
+            validation_dataset = Subset(full_train_dataset, validation_indices)
 
-        trainer = MultiStageTrainer(
-            config=self.config,
-            model=joint_sr_seg_e2e_model,
-            device=self.device,
-            train_loader=train_loader,
-            validation_loader=validation_loader,
-            criterion=criterion,
-            validation_metrics=validation_metrics,
-            optimizer=optimizer,
-            scheduler=scheduler,
-            # gradient_clipper=gradient_clipper,
-            logger=logger,
-            saving_name=self.saving_path
-        )
+            train_loader = self._get_dataloader(train_dataset)
+            validation_loader = self._get_dataloader(validation_dataset)
+        
+            sr_model = self._init_rcan()
+            seg_model = self._init_unet()
+            criterion = self._get_seg_loss(version)
+            validation_metrics = self._get_seg_validation_metrics()
+            logger = self._get_logger()
 
-        return trainer.train(epochs=self.config.epochs)
+            joint_sr_seg_e2e_model = MultiStageModel(
+                model_stage_1=sr_model,
+                model_stage_2=seg_model,
+                freeze_stage_1=False,
+                freeze_stage_2=False
+            )
+
+            optimizer = self._get_optimizer(joint_sr_seg_e2e_model.parameters(), version)
+            scheduler = self._get_scheduler(optimizer)
+            # gradient_clipper = self._get_gradient_clipper(joint_sr_seg_e2e_model)
+
+            fold_adapted_path = self._adapt_saving_path(fold_idx)
+
+            trainer = MultiStageTrainer(
+                config=self.config,
+                model=joint_sr_seg_e2e_model,
+                device=self.device,
+                train_loader=train_loader,
+                validation_loader=validation_loader,
+                criterion=criterion,
+                validation_metrics=validation_metrics,
+                optimizer=optimizer,
+                scheduler=scheduler,
+                # gradient_clipper=gradient_clipper,
+                logger=logger,
+                saving_name=fold_adapted_path
+            )
+
+            _, validation_results = trainer.train(epochs=self.config.epochs)
+            fold_validation_results.append({
+                "fold": fold_idx + 1,
+                "fold_metrics": validation_results
+            })
+
+        return fold_validation_results
     
     def test(self, test_dataset):
-        test_loader = self._get_dataloader(test_dataset)
+        fold_test_results = []
 
-        sr_model = self._init_rcan()
-        seg_model = self._init_unet()
-        validation_metrics = self._get_seg_validation_metrics()
+        for fold_idx in self.config.num_folds:
+            print(f"\nFold {fold_idx + 1}/{len(self.folds)}")
 
-        joint_sr_seg_e2e_model = MultiStageModel(
-            sr_model, 
-            seg_model, 
-            freeze_stage_1=True, 
-            freeze_stage_2=True
-        )
-        
-        load_model_for_inference(model=joint_sr_seg_e2e_model, saving_name=self.saving_path)
+            test_loader = self._get_dataloader(test_dataset)
 
-        trainer = MultiStageTrainer(
-            config=self.config,
-            model=joint_sr_seg_e2e_model,
-            device=self.device,
-            validation_metrics=validation_metrics
-        )
+            sr_model = self._init_rcan()
+            seg_model = self._init_unet()
+            validation_metrics = self._get_seg_validation_metrics()
 
-        return trainer.test(test_loader)
-    
+            joint_sr_seg_e2e_model = MultiStageModel(
+                sr_model, 
+                seg_model, 
+                freeze_stage_1=True, 
+                freeze_stage_2=True
+            )
+
+            fold_adapted_path = self._adapt_saving_path(fold_idx)
+            load_model_for_inference(model=joint_sr_seg_e2e_model, saving_name=fold_adapted_path)
+
+            trainer = MultiStageTrainer(
+                config=self.config,
+                model=joint_sr_seg_e2e_model,
+                device=self.device,
+                validation_metrics=validation_metrics
+            )
+
+            test_metrics = trainer.test(test_loader)
+            fold_test_results.append({
+                "fold": fold_idx + 1,
+                "fold_metrics": test_metrics
+            })
+
+        return fold_test_results
+
+    # PENDING TO DELETE
     def predict(self, input_tensor):
         sr_model = self._init_rcan()
         seg_model = self._init_unet()
@@ -108,6 +137,7 @@ class JointSRSegE2EPipeline(BasePipeline):
                 'dice': dice
             }
 
+    # PENDING TO DELETE
     def predict_random(self, dataset):
         sr_model = self._init_rcan()
         seg_model = self._init_unet()

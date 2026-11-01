@@ -15,33 +15,43 @@ class FrozenSRFrozenSegPipeline(BasePipeline):
         print('It has already both models trained.')
 
     def test(self, test_dataset):
-        test_loader = self._get_dataloader(test_dataset)
+        fold_test_results = []
 
-        sr_model = self._init_rcan()
-        seg_model = self._init_unet()
-        validation_metrics = self._get_seg_validation_metrics()
+        for fold_idx in self.config.num_folds:
+            test_loader = self._get_dataloader(test_dataset)
 
-        sr_path = os.path.join(self.config.folder_name, f'{self.config.sr_name}.pth')
-        seg_path = os.path.join(self.config.folder_name, f'{self.config.hr_seg_name}.pth')
-        load_model_for_inference(sr_model, sr_path)
-        load_model_for_inference(seg_model, seg_path)
+            sr_model = self._init_rcan()
+            seg_model = self._init_unet()
+            validation_metrics = self._get_seg_validation_metrics()
 
-        sr_seg_model = MultiStageModel(
-            sr_model, 
-            seg_model, 
-            freeze_stage_1=True, 
-            freeze_stage_2=True
-        )
+            sr_path = os.path.join(self.config.folder_name, f'{self.config.sr_name}_fold{fold_idx}.pth')
+            seg_path = os.path.join(self.config.folder_name, f'{self.config.hr_seg_name}_fold{fold_idx}.pth')
+            load_model_for_inference(sr_model, sr_path)
+            load_model_for_inference(seg_model, seg_path)
 
-        trainer = MultiStageTrainer(
-            config=self.config,
-            model=sr_seg_model,
-            device=self.device,
-            validation_metrics=validation_metrics
-        )
+            sr_seg_model = MultiStageModel(
+                sr_model, 
+                seg_model, 
+                freeze_stage_1=True, 
+                freeze_stage_2=True
+            )
 
-        return trainer.test(test_loader)
-    
+            trainer = MultiStageTrainer(
+                config=self.config,
+                model=sr_seg_model,
+                device=self.device,
+                validation_metrics=validation_metrics
+            )
+
+            test_metrics = trainer.test(test_loader)
+            fold_test_results.append({
+                "fold": fold_idx + 1,
+                "fold_metrics": test_metrics
+            })
+
+        return fold_test_results
+
+    # PENDING TO DELETE
     def predict(self, input_tensor):
         sr_path = os.path.join(self.config.folder_name, f'{self.config.sr_name}.pth')
         seg_path = os.path.join(self.config.folder_name, f'{self.config.hr_seg_name}.pth')
@@ -76,6 +86,7 @@ class FrozenSRFrozenSegPipeline(BasePipeline):
                 'dice': dice
             }
 
+    # PENDING TO DELETE
     def predict_random(self, dataset):
         sr_path = os.path.join(self.config.folder_name, f'{self.config.sr_name}.pth')
         seg_path = os.path.join(self.config.folder_name, f'{self.config.hr_seg_name}.pth')

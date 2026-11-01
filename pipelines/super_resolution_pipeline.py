@@ -1,5 +1,6 @@
 import random
 import torch
+from torch.utils.data import Subset
 from pipelines.base_pipeline import BasePipeline
 from trainers.super_resolution_trainer import SuperResolutionTrainer
 from enums.hyperparameter_enum import HyperparameterVersion
@@ -9,52 +10,78 @@ class SuperResolutionPipeline(BasePipeline):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-    def run(self, train_dataset, validation_dataset):
-        train_loader = self._get_dataloader(train_dataset)
-        validation_loader = self._get_dataloader(validation_dataset)
-
+    def run(self, full_train_dataset, folds):
         version = HyperparameterVersion.V1
+        fold_validation_results = []
 
-        model = self._init_rcan()
-        criterion = self._get_sr_loss()
-        validation_metrics = self._get_sr_validation_metrics()
-        optimizer = self._get_optimizer(model.parameters(), version)
-        scheduler = self._get_scheduler(optimizer)
-        logger = self._get_logger()
+        for fold_idx, (train_indices, validation_indices) in enumerate(folds):
+            print(f"\nFold {fold_idx + 1}/{len(self.folds)}")
 
-        trainer = SuperResolutionTrainer(
-            config=self.config,
-            model=model,
-            device=self.device,
-            train_loader=train_loader,
-            validation_loader=validation_loader,
-            criterion=criterion,
-            validation_metrics=validation_metrics,
-            optimizer=optimizer,
-            scheduler=scheduler,
-            saving_name=self.saving_path,
-            logger=logger
-        )
+            train_dataset = Subset(full_train_dataset, train_indices)
+            validation_dataset = Subset(full_train_dataset, validation_indices)
 
-        return trainer.train(epochs=self.config.epochs)
+            train_loader = self._get_dataloader(train_dataset)
+            validation_loader = self._get_dataloader(validation_dataset)
+
+            model = self._init_rcan()
+            criterion = self._get_sr_loss()
+            validation_metrics = self._get_sr_validation_metrics()
+            optimizer = self._get_optimizer(model.parameters(), version)
+            scheduler = self._get_scheduler(optimizer)
+            logger = self._get_logger()
+
+            fold_adapted_path = self._adapt_saving_path(fold_idx)
+
+            trainer = SuperResolutionTrainer(
+                config=self.config,
+                model=model,
+                device=self.device,
+                train_loader=train_loader,
+                validation_loader=validation_loader,
+                criterion=criterion,
+                validation_metrics=validation_metrics,
+                optimizer=optimizer,
+                scheduler=scheduler,
+                saving_name=fold_adapted_path,
+                logger=logger
+            )
+
+        _, validation_results = trainer.train(fold_idx=fold_idx, epochs=self.config.epochs)
+        fold_validation_results.append({
+            "fold": fold_idx + 1,
+            "fold_metrics": validation_results
+        })
+
+        return fold_validation_results
     
     def test(self, test_dataset):
-        test_loader = self._get_dataloader(test_dataset)
+        fold_test_results = []
 
-        model = self._init_rcan()
-        validation_metrics = self._get_sr_validation_metrics()
+        for fold_idx in self.config.num_folds:
+            test_loader = self._get_dataloader(test_dataset)
 
-        load_model_for_inference(model, self.saving_path)
+            model = self._init_rcan()
+            validation_metrics = self._get_sr_validation_metrics()
 
-        trainer = SuperResolutionTrainer(
-            config=self.config,
-            model=model,
-            device=self.device,
-            validation_metrics=validation_metrics
-        )
+            fold_adapted_path = self._adapt_saving_path(fold_idx)
+            load_model_for_inference(model, fold_adapted_path)
 
-        return trainer.test(test_loader)
-    
+            trainer = SuperResolutionTrainer(
+                config=self.config,
+                model=model,
+                device=self.device,
+                validation_metrics=validation_metrics
+            )
+
+            test_metrics = trainer.test(test_loader)
+            fold_test_results.append({
+                "fold": fold_idx + 1,
+                "fold_results": test_metrics
+            })
+
+        return fold_test_results
+
+    # PENDING TO DELETE
     def predict(self, input_tensor):
         model = self._init_rcan()
         load_model_for_inference(model, self.saving_path)
@@ -74,6 +101,7 @@ class SuperResolutionPipeline(BasePipeline):
                 'predicted_image': predicted_image
             }
 
+    # PENDING TO DELETE
     def predict_random(self, dataset):
         model = self._init_rcan()
         load_model_for_inference(model, self.saving_path)
