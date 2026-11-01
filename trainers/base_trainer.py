@@ -6,7 +6,7 @@ class BaseTrainer(ABC):
             self, 
             config,
             model, 
-            device, 
+            device,
             train_loader=None, 
             validation_loader=None, 
             criterion=None, 
@@ -21,6 +21,7 @@ class BaseTrainer(ABC):
         super().__init__()
         self.config = config
         self.device = device
+        self.patience = self.config.patience
         self.train_loader = train_loader
         self.validation_loader = validation_loader
         self.model = model.to(device)
@@ -35,6 +36,7 @@ class BaseTrainer(ABC):
 
     def train(self, epochs):
         best_validation_score = float('-inf')
+        early_stop_counter = 0
 
         for epoch in range(epochs):
             train_loss = self._train_epoch(epoch, epochs)
@@ -43,19 +45,26 @@ class BaseTrainer(ABC):
             validation_score = validation_metrics[self.get_primary_metric_name()]
             self.scheduler.step(validation_score)
 
+            print(f'Epoch {epoch+1}/{epochs}')
+            print(f'\tTrain Loss: {train_loss:.4f}')
+            print(f'\tValidation Metrics: {validation_metrics}')
+
             if self.logger:
                 self.logger.log_metric("Loss", train_loss, epoch, phase="Training")
                 self.logger.log_metrics(validation_metrics, epoch, phase="Validation")
 
             if validation_score > best_validation_score:
+                early_stop_counter = 0
                 best_validation_score = validation_score
                 best_metrics = validation_metrics
                 save_model_for_inference(self.model, self.saving_name)
-            
-            print(f'Epoch {epoch+1}/{epochs}')
-            print(f'\tTrain Loss: {train_loss:.4f}')
-            print(f'\tValidation Metrics: {validation_metrics}')
+            else:
+                early_stop_counter += 1
+                print(f'Early Stopping: {early_stop_counter}/{self.patience}')
 
+                if early_stop_counter >= self.patience:
+                    break
+        
         load_model_for_inference(self.model, self.saving_name)
         return self.model, best_metrics
 

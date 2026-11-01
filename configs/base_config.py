@@ -15,6 +15,7 @@ class BaseConfig:
     num_workers: int = 4
     learning_rate_v1: float = 1e-4  # For SR-Seg pipelines
     learning_rate_v3: float = 3e-4  # For LR-Segmentation (baseline)
+    patience: int = 8
     shuffle_data: bool = True
 
     # SuperRes config
