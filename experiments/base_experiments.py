@@ -22,9 +22,7 @@ class BaseExperiments(ABC):
             is_training=True, 
             is_control_dataset=False,
             view=self.config.view, 
-            scale_factor=self.config.scale_factor,
-            target_width=self.config.target_width,
-            target_height=self.config.target_height
+            scale_factor=self.config.scale_factor
         )
         self.full_train_dataset = lesion_training_dataset
 
@@ -37,13 +35,10 @@ class BaseExperiments(ABC):
             is_training=False,
             is_control_dataset=False,
             view=self.config.view, 
-            scale_factor=self.config.scale_factor,
-            target_width=self.config.target_width,
-            target_height=self.config.target_height
+            scale_factor=self.config.scale_factor
         )
 
     def _generate_patient_folds(self, names, num_folds):
-        # indices = list(range(len(names)))
         patient_id_groups = [
             self._get_patient_id(name)
             for name in names
@@ -51,7 +46,6 @@ class BaseExperiments(ABC):
 
         splitter = GroupKFold(n_splits=num_folds)
         folds = list(splitter.split(
-            # X=indices,
             X=names,
             groups=patient_id_groups
         ))
