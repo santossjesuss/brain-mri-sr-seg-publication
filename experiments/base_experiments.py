@@ -87,18 +87,25 @@ class BaseExperiments(ABC):
             pipeline=SuperResolutionPipeline
         )
 
-    def get_hr_segmentation(self):
-        return self._create_experiment(
-            name=self.config.hr_seg_name, 
-            pipeline=SegmentationPipeline,
-            data_resolution=Resolution.HR
-        )
-
     def get_lr_segmentation(self):
         return self._create_experiment(
             name=self.config.lr_seg_name, 
             pipeline=SegmentationPipeline,
             data_resolution=Resolution.LR
+        )
+
+    def get_interpolated_hr_segmentation(self):
+        return self._create_experiment(
+            name=self.config.interpolated_hr_seg_name,
+            pipeline=SegmentationPipeline,
+            data_resolution=Resolution.INTERPOLATED_HR
+        )
+    
+    def get_hr_segmentation(self):
+        return self._create_experiment(
+            name=self.config.hr_seg_name, 
+            pipeline=SegmentationPipeline,
+            data_resolution=Resolution.HR
         )
 
     def get_frozen_sr_frozen_seg(self):

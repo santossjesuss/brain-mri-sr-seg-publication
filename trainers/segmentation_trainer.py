@@ -54,6 +54,9 @@ class SegmentationTrainer(BaseTrainer):
         hr_image, hr_masks, lr_image, _ = batch
         if self.data_resolution == Resolution.HR:
             image = hr_image.to(self.device, dtype=torch.float32)
+        elif self.data_resolution == Resolution.INTERPOLATED_HR:
+            interpolated_hr_image = self.transforms.upsample_image_bicubic(lr_image)
+            image = interpolated_hr_image.to(self.device, dtype=torch.float32)
         else:
             image = lr_image.to(self.device, dtype=torch.float32)
         
