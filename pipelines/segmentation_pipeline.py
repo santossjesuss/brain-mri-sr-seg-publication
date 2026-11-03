@@ -12,10 +12,10 @@ class SegmentationPipeline(BasePipeline):
         super().__init__(*args, **kwargs)
 
     def _get_hyperparameter_version(self):
-        if self.data_resolution == Resolution.HR:
-            version = HyperparameterVersion.V1
-        else:
+        if self.data_resolution == Resolution.LR:
             version = HyperparameterVersion.V3
+        else:   # HR or INTERPOLATED_HR
+            version = HyperparameterVersion.V1
 
         return version
 

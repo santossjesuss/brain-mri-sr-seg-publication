@@ -4,12 +4,17 @@ def execute_training_batch(experiments):
     sr_experiment = experiments.get_super_resolution()
     training_results['SR'] = sr_experiment.run()
 
+    # ---> Baselines
     lr_seg_experiment = experiments.get_lr_segmentation()
     training_results['LR Seg'] = lr_seg_experiment.run()
+
+    interpolated_hr_seg_experiment = experiments.get_interpolated_hr_segmentation()
+    training_results['Interpolated HR Seg'] = interpolated_hr_seg_experiment.run()
 
     hr_seg_experiment = experiments.get_hr_segmentation()
     training_results['HR Seg'] = hr_seg_experiment.run()
 
+    # ---> Pipelines
     frozen_sr_trainable_seg_experiment = experiments.get_frozen_sr_trainable_seg()
     training_results['Frozen SR -> Trainable Seg'] = frozen_sr_trainable_seg_experiment.run()
 
@@ -31,12 +36,17 @@ def execute_training_batch(experiments):
     return training_results
 
 def execute_testing_batch(experiments):
+    # ---> Baselines
     lr_seg_experiment = experiments.get_lr_segmentation()
     lr_seg_experiment.test()
+
+    interpolated_hr_seg_experiment = experiments.get_interpolated_hr_segmentation()
+    interpolated_hr_seg_experiment.test()
 
     hr_seg_experiment = experiments.get_hr_segmentation()
     hr_seg_experiment.test()
 
+    # ---> Pipelines
     frozen_sr_frozen_seg_experiment = experiments.get_frozen_sr_frozen_seg()
     frozen_sr_frozen_seg_experiment.test()
 

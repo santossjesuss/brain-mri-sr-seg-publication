@@ -58,8 +58,9 @@ class BaseConfig:
     # Saving config
     folder_name: str = 'trained_models'
     sr_name: str = 'sr'
-    hr_seg_name: str = 'hr_seg'
     lr_seg_name: str = 'lr_seg'
+    interpolated_hr_seg_name: str = 'interpolated_hr_seg'
+    hr_seg_name: str = 'hr_seg'
     frozen_sr_frozen_seg: str = 'frozen_sr_frozen_seg'
     frozen_sr_trainable_seg: str = 'frozen_sr_trainable_seg'
     trainable_sr_frozen_seg: str = 'trainable_sr_frozen_seg'

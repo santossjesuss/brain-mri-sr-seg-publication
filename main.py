@@ -31,6 +31,7 @@ def main():
     # --- Individual --- #
     # experiment = ms_experiments.get_super_resolution()
     # experiment = ms_experiments.get_lr_segmentation()
+    # experiment = ms_experiments.get_interpolated_hr_segmentation()
     # experiment = ms_experiments.get_hr_segmentation()
     # experiment = ms_experiments.get_frozen_sr_frozen_seg()
     # experiment = ms_experiments.get_frozen_sr_trainable_seg()
@@ -50,6 +51,7 @@ def main():
     # experiments = MSLesSegExperiments()
     # experiment = experiments.get_super_resolution()
     # experiment = experiments.get_lr_segmentation()
+    # experiment = experiments.get_interpolated_hr_segmentation()
     # experiment = experiments.get_hr_segmentation()
     # experiment = experiments.get_frozen_sr_frozen_seg()
     # experiment = experiments.get_frozen_sr_trainable_seg()
