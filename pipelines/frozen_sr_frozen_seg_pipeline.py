@@ -18,6 +18,8 @@ class FrozenSRFrozenSegPipeline(BasePipeline):
         fold_test_results = []
 
         for fold_idx in self.config.num_folds:
+            print(f"\nFold {fold_idx + 1}/{self.config.num_folds}")
+
             test_loader = self._get_dataloader(test_dataset)
 
             sr_model = self._init_rcan()

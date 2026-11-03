@@ -58,10 +58,10 @@ class BaseExperiments(ABC):
 
         return patient_id
 
-    def _parse_mri_filename(filename):
+    def _parse_mri_filename(self, filename):
         parts = Path(filename).stem.split("_")
 
-        if len(parts != 3):
+        if len(parts) != 3:
             raise ValueError(f"Unexpected filename {filename}")
 
         patient_id = parts[1]

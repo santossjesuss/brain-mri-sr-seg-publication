@@ -156,8 +156,8 @@ class BasePipeline(ABC):
 
     def _adapt_saving_path(self, fold_idx):
         path_without_extension = Path(self.saving_path).stem
-        fold_suffix = f"_fold{fold_idx}"
+        fold_suffix = f"fold{fold_idx}"
         file_extension = ".pth"
 
-        adapted_path = os.path.join(path_without_extension, fold_suffix, file_extension)
+        adapted_path = f'{path_without_extension}_{fold_suffix}.{file_extension}'
         return adapted_path

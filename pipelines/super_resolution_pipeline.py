@@ -15,7 +15,7 @@ class SuperResolutionPipeline(BasePipeline):
         fold_validation_results = []
 
         for fold_idx, (train_indices, validation_indices) in enumerate(folds):
-            print(f"\nFold {fold_idx + 1}/{len(self.folds)}")
+            print(f"\nFold {fold_idx + 1}/{self.config.num_folds}")
 
             train_dataset = Subset(full_train_dataset, train_indices)
             validation_dataset = Subset(full_train_dataset, validation_indices)
@@ -46,11 +46,11 @@ class SuperResolutionPipeline(BasePipeline):
                 logger=logger
             )
 
-        _, validation_results = trainer.train(fold_idx=fold_idx, epochs=self.config.epochs)
-        fold_validation_results.append({
-            "fold": fold_idx + 1,
-            "fold_metrics": validation_results
-        })
+            _, validation_results = trainer.train(epochs=self.config.epochs)
+            fold_validation_results.append({
+                "fold": fold_idx + 1,
+                "fold_metrics": validation_results
+            })
 
         return fold_validation_results
     
@@ -58,6 +58,8 @@ class SuperResolutionPipeline(BasePipeline):
         fold_test_results = []
 
         for fold_idx in self.config.num_folds:
+            print(f"\nFold {fold_idx + 1}/{self.config.num_folds}")
+
             test_loader = self._get_dataloader(test_dataset)
 
             model = self._init_rcan()
