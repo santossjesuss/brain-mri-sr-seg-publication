@@ -1,5 +1,8 @@
 from abc import ABC, abstractmethod
+from utils.gpu import synchronize_gpu
+from utils.time import format_elapsed_time
 from utils.model_persistence import save_model_for_inference, load_model_for_inference
+import time 
 
 class BaseTrainer(ABC):
     def __init__(
@@ -38,6 +41,9 @@ class BaseTrainer(ABC):
         best_validation_score = float('-inf')
         early_stop_counter = 0
 
+        synchronize_gpu()
+        start_time = time.perf_counter()
+
         for epoch in range(epochs):
             train_loss = self._train_epoch(epoch, epochs)
             validation_metrics = self._validate()
@@ -65,8 +71,14 @@ class BaseTrainer(ABC):
                 if early_stop_counter >= self.patience:
                     break
         
+        synchronize_gpu()
+        end_time = time.perf_counter()
+        
+        elapsed_time = end_time - start_time
+        training_time = format_elapsed_time(elapsed_time)
+        
         load_model_for_inference(self.model, self.saving_name)
-        return self.model, best_metrics
+        return self.model, best_metrics, training_time
 
     @abstractmethod
     def _train_epoch(self, epoch, total_epochs):
