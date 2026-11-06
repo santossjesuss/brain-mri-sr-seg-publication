@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 from utils.gpu import synchronize_gpu
+from utils.memory import reset_memory_statistics, query_peak_memory_allocation
 from utils.time import format_elapsed_time
 from utils.model_persistence import save_model_for_inference, load_model_for_inference
 import time 
@@ -41,6 +42,7 @@ class BaseTrainer(ABC):
         best_validation_score = float('-inf')
         early_stop_counter = 0
 
+        reset_memory_statistics()
         synchronize_gpu()
         start_time = time.perf_counter()
 
@@ -76,9 +78,10 @@ class BaseTrainer(ABC):
         
         elapsed_time = end_time - start_time
         training_time = format_elapsed_time(elapsed_time)
+        peak_memory = query_peak_memory_allocation()
         
         load_model_for_inference(self.model, self.saving_name)
-        return self.model, best_metrics, training_time
+        return self.model, best_metrics, training_time, peak_memory
 
     @abstractmethod
     def _train_epoch(self, epoch, total_epochs):

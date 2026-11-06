@@ -64,11 +64,12 @@ class TrainableSRFrozenSegPipeline(BasePipeline):
                 saving_name=fold_adapted_path
             )
 
-            _, validation_results, training_time = trainer.train(epochs=self.config.epochs)
+            _, validation_results, training_time, peak_memory = trainer.train(epochs=self.config.epochs)
             fold_validation_results.append({
                 "fold": fold_idx + 1,
                 "fold_metrics": validation_results,
-                "training_time": training_time
+                "training_time": training_time,
+                "peak_memory": peak_memory
             })
 
         return fold_validation_results
