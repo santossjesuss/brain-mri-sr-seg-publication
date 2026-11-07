@@ -8,7 +8,6 @@ class BaseConfig:
     - Version 1: SR-Seg pipelines (using HR-Segmentation)
     - Version 3: LR-Segmentation 
     '''
-    # --|Server config|--
     # Training config
     epochs: int = 100
     batch_size: int = 16
@@ -23,25 +22,10 @@ class BaseConfig:
     num_rg: int = 5
     num_rcab: int = 8
     sr_inner_channels: int = 64
-    # --|Server config|--
- 
-    # --|Local config|--
-    # Training config
-    # epochs: int = 1
-    # batch_size: int = 2
-    # num_workers: int = 1
-    # shuffle_data: bool = True
-
-    # # SuperRes config
-    # num_rg: int = 1
-    # num_rcab: int = 1
-    # sr_inner_channels: int = 2
-    # --|Local config|--
     
     # Segmentation config
     seg_model_name: str = 'resnet34'
-    seg_encoder_weights: str = None       # pre-cambios de Karl 
-    # seg_encoder_weights: str = 'imagenet'   # cambio sugerido
+    seg_encoder_weights: str = None
 
     # Losses config
     sr_loss_weight: float = 0.5
@@ -72,24 +56,3 @@ class BaseConfig:
 
     # Logging config
     base_img_log_dir: str = 'logs/images'
-
-    # Hiperparameter Tuning
-    # --|V.1 Hiperparameters|--
-    # learning_rate: float = 1e-4
-    # dice_weight: float = 0.5
-    # cross_entropy_weight: float = 0.5
-
-    # --|V.2 Hiperparameters|--
-    # learning_rate: float = 3e-4
-    # dice_weight: float = 0.5
-    # cross_entropy_weight: float = 0.5
-
-    # --|V.3 Hiperparameters|--
-    # learning_rate: float = 3e-4
-    # dice_weight: float = 0.7
-    # cross_entropy_weight: float = 0.3
-
-    # --|V.4 Hiperparameters|--
-    # learning_rate: float = 1e-4
-    # dice_weight: float = 0.7
-    # cross_entropy_weight: float = 0.3
