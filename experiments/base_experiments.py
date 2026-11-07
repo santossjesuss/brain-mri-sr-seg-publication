@@ -64,10 +64,13 @@ class BaseExperiments(ABC):
         if len(parts) != 3:
             raise ValueError(f"Unexpected filename {filename}")
 
-        patient_id = parts[1]
+        scan_code = parts[1]
         slice_id = parts[2]
 
-        return patient_id, slice_id
+        patient_id = scan_code[:-1]
+        timestamp = scan_code[-1]
+
+        return patient_id, timestamp, slice_id
 
     def _create_experiment(self, name, pipeline, data_resolution=None):
         return Experiment(
