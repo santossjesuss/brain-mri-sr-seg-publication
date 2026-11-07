@@ -28,14 +28,13 @@ class BaseSegmentationDataset(Dataset, ABC):
         mask_path = os.path.join(self.mask_base_path, self.mask_names[idx])
         
         hr_image = read_image(image_path, mode=ImageReadMode.GRAY)
-        lr_image = self.transforms.downsample_image_bicubic(hr_image)
         hr_mask = read_image(mask_path, mode=ImageReadMode.GRAY)
+        lr_image = self.transforms.downsample_image_bicubic(hr_image)
 
         hr_image = self.transforms.normalize_image(hr_image)
         lr_image = self.transforms.normalize_image(lr_image)
 
         hr_mask = hr_mask.squeeze(0)
-        lr_mask = lr_mask.squeeze(0)
         hr_mask = self.transforms.normalize_binary_mask(mask=hr_mask)
 
         return hr_image, hr_mask, lr_image
