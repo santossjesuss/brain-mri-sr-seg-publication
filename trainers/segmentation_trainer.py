@@ -41,7 +41,7 @@ class SegmentationTrainer(BaseTrainer):
             for batch in tqdm(dataloader, desc=description):
                 image, masks = self._prepare_batch(batch)
 
-                predicted_masks_logits = self.model(image)                      # (Batch, Classes, H, W)
+                predicted_masks_logits = self.model(image)                     # (Batch, Classes, H, W)
                 if self.data_resolution == Resolution.LR:
                     upsampled_mask_logits = self.transforms.upsample_mask_logits_bilinear(predicted_masks_logits)
                 predicted_masks = torch.argmax(upsampled_mask_logits, dim=1)   # (Batch, H, W)
@@ -51,7 +51,7 @@ class SegmentationTrainer(BaseTrainer):
         return self.validation_metrics.compute()
     
     def _prepare_batch(self, batch):
-        hr_image, hr_masks, lr_image, _ = batch
+        hr_image, hr_masks, lr_image = batch
         if self.data_resolution == Resolution.HR:
             image = hr_image.to(self.device, dtype=torch.float32)
         elif self.data_resolution == Resolution.INTERPOLATED_HR:

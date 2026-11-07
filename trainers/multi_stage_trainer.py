@@ -15,8 +15,9 @@ class MultiStageTrainer(BaseTrainer):
 
         progress_bar_description = f"Epoch {epoch+1}/{total_epochs}"
         progress_bar = tqdm(self.train_loader, desc=progress_bar_description)
-        for batch_idx, batch in enumerate(progress_bar):
-            lr_image, _, hr_image, hr_masks = self._prepare_batch(batch)
+        # for batch_idx, batch in enumerate(progress_bar):
+        for batch in progress_bar:
+            hr_image, hr_masks, lr_image = self._prepare_batch(batch)
 
             self.optimizer.zero_grad(set_to_none=True)
             pred_hr_masks_logits, pred_hr_image = self.model(lr_image)
@@ -44,7 +45,7 @@ class MultiStageTrainer(BaseTrainer):
 
         with torch.no_grad():
             for batch in tqdm(dataloader, desc=description):
-                lr_image, _, _, hr_masks = self._prepare_batch(batch)
+                lr_image, _, hr_masks = self._prepare_batch(batch)
 
                 pred_hr_masks_logits, _ = self.model(lr_image)
                 predicted_hr_masks = torch.argmax(pred_hr_masks_logits, dim=1)    # (Batch, H, W)
@@ -54,14 +55,13 @@ class MultiStageTrainer(BaseTrainer):
         return self.validation_metrics.compute()
     
     def _prepare_batch(self, batch):
-        hr_image, hr_masks, lr_image, lr_masks = batch
+        hr_image, hr_masks, lr_image = batch
         
         hr_image = hr_image.to(self.device, dtype=torch.float32)
-        lr_image = lr_image.to(self.device, dtype=torch.float32)
         hr_masks = hr_masks.to(self.device, dtype=torch.long)
-        lr_masks = lr_masks.to(self.device, dtype=torch.long)
+        lr_image = lr_image.to(self.device, dtype=torch.float32)
 
-        return lr_image, lr_masks, hr_image, hr_masks
+        return hr_image, hr_masks, lr_image
 
     def get_primary_metric_name(self):
         return "dice"

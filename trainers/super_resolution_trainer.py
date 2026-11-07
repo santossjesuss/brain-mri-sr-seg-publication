@@ -41,7 +41,7 @@ class SuperResolutionTrainer(BaseTrainer):
         return self.validation_metrics.compute()
     
     def _prepare_batch(self, batch):
-        hr_image, _, lr_image, _ = batch
+        hr_image, _, lr_image = batch
 
         lr_image = lr_image.to(self.device, dtype=torch.float32)
         hr_image = hr_image.to(self.device, dtype=torch.float32)
