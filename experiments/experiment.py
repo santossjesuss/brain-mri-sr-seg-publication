@@ -13,8 +13,8 @@ class Experiment:
         print(f"Starting experiment: {self.name}")
 
         pipeline = self.pipeline(config=self.config, experiment_name=self.name, dataset_name=self.dataset_name, data_resolution=self.data_resolution)
-        model, best_metrics = pipeline.run(self.full_train_dataset, self.folds)
-        return model, best_metrics
+        fold_results = pipeline.run(self.full_train_dataset, self.folds)
+        return fold_results
 
     def test(self):
         print(f"Testing experiment: {self.name}")

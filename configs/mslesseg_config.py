@@ -9,6 +9,8 @@ class MSLesSegConfig(BaseConfig):
     # SuperRes config
     sr_out_channels: int = 1
     scale_factor: float = 2
+    # scale_factor: float = 3
+    # scale_factor: float = 4
 
     # Segmentation config
     seg_classes: int = 2
