@@ -15,10 +15,12 @@ class BaseTransforms():
         return (mask > 0).long()
 
     def upsample_image_bicubic(self, image):
-        image = image.unsqueeze(0)
-        upscaled_image = F.interpolate(image, scale_factor=self.scale_factor, mode=self._bicubic_interpolation)
-
-        return upscaled_image.squeeze(0)
+        if image.dim() == 3:  # [C, H, W]
+            image = image.unsqueeze(0)
+            upscaled_image = F.interpolate(image, scale_factor=self.scale_factor, mode=self._bicubic_interpolation)
+            return upscaled_image.squeeze(0)
+        else:  # [B, C, H, W]
+            return  F.interpolate(image, scale_factor=self.scale_factor, mode=self._bicubic_interpolation)
 
     def downsample_image_bicubic(self, image):
         image = image.unsqueeze(0)

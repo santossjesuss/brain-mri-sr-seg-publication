@@ -107,9 +107,7 @@ class BasePipeline(ABC):
         return SuperResolutionMetrics()
 
     def _get_seg_validation_metrics(self):
-        return SegmentationMetrics(
-            num_classes=self.config.seg_classes
-        )
+        return SegmentationMetrics()
 
     def _get_optimizer(self, model_params, hyperparameter_version):
         if HyperparameterVersion.V1 == hyperparameter_version:

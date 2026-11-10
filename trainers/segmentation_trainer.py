@@ -8,7 +8,7 @@ class SegmentationTrainer(BaseTrainer):
     def __init__(self, data_resolution=Resolution.HR, **kwargs):
         super().__init__(**kwargs)
         self.data_resolution = data_resolution
-        self.transforms = BaseTransforms(scale_factor=self.configs.cale_factor)
+        self.transforms = BaseTransforms(scale_factor=self.config.scale_factor)
     
     def _train_epoch(self, epoch, total_epochs):
         self.model.train()
@@ -22,8 +22,8 @@ class SegmentationTrainer(BaseTrainer):
             self.optimizer.zero_grad(set_to_none=True)
             predicted_masks_logits = self.model(image)
             if self.data_resolution == Resolution.LR:
-                upsampled_mask_logits = self.transforms.upsample_mask_logits_bilinear(predicted_masks_logits)
-            loss = self.criterion(upsampled_mask_logits, masks)
+                predicted_masks_logits = self.transforms.upsample_mask_logits_bilinear(predicted_masks_logits)
+            loss = self.criterion(predicted_masks_logits, masks)
             
             loss.backward()
             self.optimizer.step()
@@ -43,8 +43,8 @@ class SegmentationTrainer(BaseTrainer):
 
                 predicted_masks_logits = self.model(image)                     # (Batch, Classes, H, W)
                 if self.data_resolution == Resolution.LR:
-                    upsampled_mask_logits = self.transforms.upsample_mask_logits_bilinear(predicted_masks_logits)
-                predicted_masks = torch.argmax(upsampled_mask_logits, dim=1)   # (Batch, H, W)
+                    predicted_masks_logits = self.transforms.upsample_mask_logits_bilinear(predicted_masks_logits)
+                predicted_masks = torch.argmax(predicted_masks_logits, dim=1)   # (Batch, H, W)
                 
                 self.validation_metrics.update(predicted_masks, masks)
 
