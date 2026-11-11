@@ -153,9 +153,11 @@ class BasePipeline(ABC):
         return metrics.compute()['dice']
 
     def _adapt_saving_path(self, fold_idx):
-        path_without_extension = Path(self.saving_path).stem
+        path = Path(self.saving_path)
+        path_to_filename = path.parent
+        filename_without_extension = path.stem
         fold_suffix = f"fold{fold_idx}"
-        file_extension = ".pth"
+        file_extension = "pth"
 
-        adapted_path = f'{path_without_extension}_{fold_suffix}.{file_extension}'
+        adapted_path = f'{path_to_filename}/{filename_without_extension}_{fold_suffix}.{file_extension}'
         return adapted_path
