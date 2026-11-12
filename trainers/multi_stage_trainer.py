@@ -45,7 +45,7 @@ class MultiStageTrainer(BaseTrainer):
 
         with torch.no_grad():
             for batch in tqdm(dataloader, desc=description):
-                lr_image, _, hr_masks = self._prepare_batch(batch)
+                _, hr_masks, lr_image = self._prepare_batch(batch)
 
                 pred_hr_masks_logits, _ = self.model(lr_image)
                 predicted_hr_masks = torch.argmax(pred_hr_masks_logits, dim=1)    # (Batch, H, W)
